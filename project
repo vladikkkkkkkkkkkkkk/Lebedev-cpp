@@ -1,0 +1,166 @@
+#include <iostream>    
+#include <vector>      
+#include <algorithm>   
+#include <string>      
+#include <ctime>       
+
+using namespace std;
+
+// Функция для вычисления выражения с учетом приоритетов операций и скобок
+double evaluate(string expr) {
+    vector<double> values;
+    vector<char> ops;
+    string num;
+    for (char c : expr) {
+        if (isdigit(c) || c == '.') {
+            num += c;
+        } else {
+            if (!num.empty()) {
+                values.push_back(stod(num));
+                num.clear();
+            }
+            if (c == '(') {
+                ops.push_back(c);
+            } else if (c == ')') {
+                while (ops.back() != '(') {
+                    double b = values.back(); values.pop_back();
+                    double a = values.back(); values.pop_back();
+                    char op = ops.back(); ops.pop_back();
+                    if (op == '+') values.push_back(a + b);
+                    else if (op == '-') values.push_back(a - b);
+                    else if (op == '*') values.push_back(a * b);
+                    else if (op == '/') values.push_back(a / b);
+                }
+                ops.pop_back();
+            } else {
+                while (!ops.empty() && ops.back() != '(' && 
+                      ((c == '+' || c == '-') || (c == '*' || c == '/'))) {
+                    double b = values.back(); values.pop_back();
+                    double a = values.back(); values.pop_back();
+                    char op = ops.back(); ops.pop_back();
+                    if (op == '+') values.push_back(a + b);
+                    else if (op == '-') values.push_back(a - b);
+                    else if (op == '*') values.push_back(a * b);
+                    else if (op == '/') values.push_back(a / b);
+                }
+                ops.push_back(c);
+            }
+        }
+    }
+    if (!num.empty()) {
+        values.push_back(stod(num));
+    }
+    while (!ops.empty()) {
+        double b = values.back(); values.pop_back();
+        double a = values.back(); values.pop_back();
+        char op = ops.back(); ops.pop_back();
+        if (op == '+') values.push_back(a + b);
+        else if (op == '-') values.push_back(a - b);
+        else if (op == '*') values.push_back(a * b);
+        else if (op == '/') values.push_back(a / b);
+    }
+    return values.back();
+}
+
+// Генерация всех возможных выражений для четырех чисел
+vector<string> generateExpressions(const vector<int>& numbers) {
+    vector<string> expressions;
+    vector<int> nums = numbers;
+    sort(nums.begin(), nums.end());
+    
+    vector<string> ops = {"+", "-", "*", "/"};
+
+    do {
+        for (const string& op1 : ops) {
+            for (const string& op2 : ops) {
+                for (const string& op3 : ops) {
+                    expressions.push_back("(" + to_string(nums[0]) + op1 + to_string(nums[1]) + ")" + op2 + "(" + to_string(nums[2]) + op3 + to_string(nums[3]) + ")");
+                    expressions.push_back("(" + to_string(nums[0]) + op1 + "(" + to_string(nums[1]) + op2 + to_string(nums[2]) + "))" + op3 + to_string(nums[3]));
+                    expressions.push_back(to_string(nums[0]) + op1 + "((" + to_string(nums[1]) + op2 + to_string(nums[2]) + ")" + op3 + to_string(nums[3]) + ")");
+                    expressions.push_back(to_string(nums[0]) + op1 + "(" + to_string(nums[1]) + op2 + "(" + to_string(nums[2]) + op3 + to_string(nums[3]) + "))");
+                }
+            }
+        }
+    } while (next_permutation(nums.begin(), nums.end()));
+    return expressions;
+}
+
+// Проверка, можно ли получить 24 из четырех чисел и возвращение возможного решения
+bool canMake24(const vector<int>& numbers, string& solution) {
+    vector<string> expressions = generateExpressions(numbers);
+    for (const string& expression : expressions) {
+        try {
+            double result = evaluate(expression);
+            if (abs(result - 24) < 1e-6) {
+                solution = expression;
+                return true;
+            }
+        } catch (...) {
+            continue;
+        }
+    }
+    return false;
+}
+
+int main() {
+    srand(static_cast<unsigned int>(time(0))); // Инициализация генератора случайных чисел
+
+    vector<int> deck;
+    for (int i = 1; i <= 13; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            deck.push_back(i);
+        }
+    }
+    random_shuffle(deck.begin(), deck.end());
+
+    int player1Cards = 0, player2Cards = 0;
+    int currentPlayer = 1;
+
+    while (!deck.empty()) {
+        vector<int> hand;
+        for (int i = 0; i < 4 && !deck.empty(); ++i) {
+            hand.push_back(deck.back());
+            deck.pop_back();
+        }
+
+        if (hand.size() < 4) {
+            break;
+        }
+
+        cout << "Карты: ";
+        for (int card : hand) {
+            cout << card << " ";
+        }
+        cout << endl;
+
+        string solution;
+        if (canMake24(hand, solution)) {
+            if (currentPlayer == 1) {
+                player1Cards += 4;
+                cout << "Игрок 1 нашел решение: " << solution << " = 24" << endl;
+            } else {
+                player2Cards += 4;
+                cout << "Игрок 2 нашел решение: " << solution << " = 24" << endl;
+            }
+        } else {
+            random_shuffle(deck.begin(), deck.end());
+            cout << "Решение не найдено. Карты перемешаны." << endl;
+        }
+
+        currentPlayer = (currentPlayer == 1) ? 2 : 1; // смена игрока
+    }
+
+    cout << "Игра окончена." << endl;
+    cout << "Игрок 1 имеет " << player1Cards << " карт." << endl;
+    cout << "Игрок 2 имеет " << player2Cards << " карт." << endl;
+
+    if (player1Cards > player2Cards) {
+        cout << "Игрок 1 победил!" << endl;
+    } else if (player2Cards > player1Cards) {
+        cout << "Игрок 2 победил!" << endl;
+    } else {
+        cout << "Ничья!" << endl;
+    }
+
+    return 0;
+}
